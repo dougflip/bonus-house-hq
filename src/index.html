@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Bonus House HQ</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body {
+            color: rgba(0, 0, 0, .7);
+            font-family: 'Arial';
+            }
+            .gauges {
+            margin: auto;
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            max-width: 400px;
+            font-size: 3rem;
+            }
+            .temp, .humidity {
+              padding: 20px;
+            }
+            .temp {
+              padding-bottom: 0;
+            }
+            .cold {
+            color: rgba(0, 0, 255, .7);
+            text-shadow: rgba(0, 0, 255, .85) 0 0 10px;
+            }
+            .cool {
+            color: rgba(0, 0, 255, .5);
+            text-shadow: rgba(0, 0, 255, .6) 0 0 10px;
+            }
+            .comfy {
+            color: rgba(0, 255, 0, .7);
+            text-shadow: rgba(0, 255, 0, .5) 0 0 10px;
+            }
+            .warm {
+            color: rgba(255, 0, 0, .5);
+            text-shadow: rgba(255, 0, 0, .5) 0 0 10px;
+            }
+            .hot {
+            color: rgba(255, 0, 0, .7);
+            text-shadow: rgba(255, 0, 0, .85) 0 0 10px;
+            }
+            .timestamp {
+            font-size: .9rem;
+            }
+
+            .lights {
+              margin-top: 75px;
+            }
+
+            .flood-light {
+              outline: none;
+            display: block;
+            margin: auto;
+            font-size: 2rem;
+            padding: 15px;
+            background-color: rgba(0, 0, 0, .25);
+            border-radius: 5px;
+            border: none;
+            }
+            .flood-light.on {
+            background-color: rgba(0, 255, 100, .5);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="gauges">
+            <div class="temp"></div>
+            <div class="humidity"></div>
+            <div class="timestamp"></div>
+        </div>
+        <div class="lights">
+            <button class="flood-light"></button>
+        </div>
+        <script type="text/javascript">
+            const floodLight = document.querySelector('.flood-light');
+            floodLight.innerHTML = 'off';
+
+            const turnOn = () => {
+              floodLight.classList.remove('on');
+              floodLight.innerHTML = 'off';
+              return fetch('/lights/on');
+            };
+
+            const turnOff = () => {
+              floodLight.classList.add('on');
+              floodLight.innerHTML = 'on';
+              return fetch('/lights/off');
+            };
+
+            floodLight.addEventListener('click', evt => {
+              return floodLight.innerHTML === 'on' ? turnOn() : turnOff();
+            });
+
+            const temp = document.querySelector('.temp');
+            const humidity = document.querySelector('.humidity');
+            const timestamp = document.querySelector('.timestamp');
+
+            function getTempCss(tempInFarenheight) {
+              if (tempInFarenheight <= 32) {
+                return 'cold';
+              }
+
+              if (tempInFarenheight <= 50) {
+                return 'cool';
+              }
+
+              if (tempInFarenheight <= 65) {
+                return 'comfy';
+              }
+
+              if (tempInFarenheight <= 85) {
+                return 'warm';
+              }
+
+              return 'hot';
+            }
+
+            function update(data) {
+              console.log('setting the data', data);
+              temp.innerHTML = `${data.farenheight}${String.fromCharCode(0x00B0)}F`;
+              temp.className = `temp ${getTempCss(data.farenheight)}`;
+              humidity.innerHTML = `${data.humidity}%`;
+              timestamp.innerHTML = new Date(data.timestamp).toUTCString();
+            }
+
+            function fetchData () {
+              return fetch('/weather-data')
+                .then(res => res.json())
+                .then(update)
+                .catch(err => {
+                  console.error('Whoops!', err);
+                })
+            }
+
+
+            setInterval(fetchData, 10000);
+            fetchData();
+        </script>
+    </body>
+</html>
