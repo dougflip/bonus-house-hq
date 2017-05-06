@@ -5,8 +5,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
             body {
-            color: rgba(0, 0, 0, .7);
-            font-family: 'Arial';
+                margin: 0;
+                color: rgba(0, 0, 0, .7);
+                font-family: 'Arial';
+            }
+            .error-message {
+                display: none;
+                background-color: rgba(255, 0, 0, .35);
+                padding: 20px;
+                font-size: 1.2rem;
+            }
+            .error-message.is-visible {
+                display: block;
             }
             .gauges {
             margin: auto;
@@ -66,6 +76,9 @@
         </style>
     </head>
     <body>
+        <div class="error-message">
+            This is an error!
+        </div>
         <div class="gauges">
             <div class="temp"></div>
             <div class="humidity"></div>
@@ -75,6 +88,10 @@
             <button class="flood-light"></button>
         </div>
         <script type="text/javascript">
+            const elError = document.querySelector('.error-message');
+            const temp = document.querySelector('.temp');
+            const humidity = document.querySelector('.humidity');
+            const timestamp = document.querySelector('.timestamp');
             const floodLight = document.querySelector('.flood-light');
             floodLight.innerHTML = 'off';
 
@@ -93,10 +110,6 @@
             floodLight.addEventListener('click', evt => {
               return floodLight.innerHTML === 'on' ? turnOn() : turnOff();
             });
-
-            const temp = document.querySelector('.temp');
-            const humidity = document.querySelector('.humidity');
-            const timestamp = document.querySelector('.timestamp');
 
             function getTempCss(tempInFarenheight) {
               if (tempInFarenheight <= 32) {
@@ -126,15 +139,39 @@
               timestamp.innerHTML = new Date(data.timestamp).toUTCString();
             }
 
+            function parseWeatherResponse(data) {
+                console.log('data', data);
+                if (data.error) {
+                    return Promise.reject(data);
+                }
+
+                return data;
+            }
+
             function fetchData () {
               return fetch('/weather-data')
                 .then(res => res.json())
+                .then(parseWeatherResponse)
                 .then(update)
                 .catch(err => {
                   console.error('Whoops!', err);
+                  showError(`
+                      Error retrieving weather data.<br/>
+                      Is NODE_ENV=production?<br/>
+                      Double check the GPIO pins?
+                  `);
                 })
             }
 
+            function showError(msg) {
+                elError.classList.add('is-visible');
+                elError.innerHTML = msg;
+            }
+
+            function clearError() {
+                elError.classList.remove('is-visible');
+                elError.innerHTML = '';
+            }
 
             setInterval(fetchData, 10000);
             fetchData();

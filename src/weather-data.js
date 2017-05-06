@@ -23,10 +23,11 @@ module.exports = (dht, pin) => {
         res.end(JSON.stringify(result));
     };
 
-    const sendTempDataError = res => err => {
+    const sendTempDataError = res => error => {
+        console.error('error retrieving dht11 sensor data', error);
         res.setTimeout(500);
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ err }));
+        res.end(JSON.stringify({ error }));
     };
 
     const handleWeatherDataRequest = (req, res) => {
