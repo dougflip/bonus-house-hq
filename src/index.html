@@ -70,107 +70,95 @@
             border-radius: 5px;
             border: none;
             }
-            .flood-light.on {
+            .flood-light.is-on {
             background-color: rgba(0, 255, 100, .5);
             }
         </style>
     </head>
     <body>
-        <div class="error-message">
-            This is an error!
-        </div>
-        <div class="gauges">
-            <div class="temp"></div>
-            <div class="humidity"></div>
-            <div class="timestamp"></div>
-        </div>
-        <div class="lights">
-            <button class="flood-light"></button>
-        </div>
+        <div class="app"></div>
         <script type="text/javascript">
-            const elError = document.querySelector('.error-message');
-            const temp = document.querySelector('.temp');
-            const humidity = document.querySelector('.humidity');
-            const timestamp = document.querySelector('.timestamp');
-            const floodLight = document.querySelector('.flood-light');
-            floodLight.innerHTML = 'off';
-
-            const turnOn = () => {
-              floodLight.classList.remove('on');
-              floodLight.innerHTML = 'off';
-              return fetch('/lights/on');
+            let state = {
+                weatherData: {
+                    farenheight: '--',
+                    humidity: '--',
+                    timestamp: ''
+                },
+                floodLight: {
+                    isOn: false
+                },
+                errorMessage: ''
             };
 
-            const turnOff = () => {
-              floodLight.classList.add('on');
-              floodLight.innerHTML = 'on';
-              return fetch('/lights/off');
+            const cssIf = css => test => test ? css : '';
+            const isVisibleIf = cssIf('is-visible');
+            const isOnIf = cssIf('is-on');
+            const onText = isOn => isOn ? 'ON' : 'OFF';
+
+            const render = ({ weatherData, floodLight, errorMessage }) => {
+                document.querySelector('.app').innerHTML = `
+                <div class="error-message ${isVisibleIf(errorMessage)}">
+                    ${errorMessage}
+                </div>
+                <div class="gauges">
+                    <div class="temp ${getTempCss(weatherData.farenheight)}">
+                        ${weatherData.farenheight}${String.fromCharCode(0x00B0)}F
+                    </div>
+                    <div class="humidity">${weatherData.humidity}</div>
+                    <div class="timestamp">${weatherData.timestamp}</div>
+                </div>
+                <div class="lights">
+                    <button class="flood-light ${isOnIf(floodLight.isOn)}"
+                            onclick="toggleLight()">
+                        ${onText(floodLight.isOn)}
+                    </button>
+                </div>
+                `;
             };
 
-            floodLight.addEventListener('click', evt => {
-              return floodLight.innerHTML === 'on' ? turnOn() : turnOff();
-            });
+            render(state);
+
+            function toggleLight() {
+                state.floodLight.isOn = !state.floodLight.isOn;
+                render(state);
+            };
 
             function getTempCss(tempInFarenheight) {
-              if (tempInFarenheight <= 32) {
-                return 'cold';
-              }
+                if (!tempInFarenheight) return;
 
-              if (tempInFarenheight <= 50) {
-                return 'cool';
-              }
+                if (tempInFarenheight <= 32) return 'cold';
+                if (tempInFarenheight <= 50) return 'cool';
+                if (tempInFarenheight <= 65) return 'comfy';
+                if (tempInFarenheight <= 85) return 'warm';
 
-              if (tempInFarenheight <= 65) {
-                return 'comfy';
-              }
-
-              if (tempInFarenheight <= 85) {
-                return 'warm';
-              }
-
-              return 'hot';
-            }
-
-            function update(data) {
-              console.log('setting the data', data);
-              temp.innerHTML = `${data.farenheight}${String.fromCharCode(0x00B0)}F`;
-              temp.className = `temp ${getTempCss(data.farenheight)}`;
-              humidity.innerHTML = `${data.humidity}%`;
-              timestamp.innerHTML = new Date(data.timestamp).toUTCString();
+                return 'hot';
             }
 
             function parseWeatherResponse(data) {
-                console.log('data', data);
-                if (data.error) {
-                    return Promise.reject(data);
-                }
+                return data.error ? Promise.reject(data) : data;
+            }
 
-                return data;
+            function renderWithWeather(weatherData) {
+                state.weatherData = weatherData;
+                render(state);
+            }
+
+            function renderWithWeatherError(error) {
+                state.errorMessage = `
+                    Error retrieving weather data.<br/>
+                    Is NODE_ENV=production?<br/>
+                    Double check the GPIO pins?<br /><hr />
+                    ${JSON.stringify(error)}
+                `;
+                render(state);
             }
 
             function fetchData () {
               return fetch('/weather-data')
                 .then(res => res.json())
                 .then(parseWeatherResponse)
-                .then(update)
-                .catch(err => {
-                  console.error('Whoops!', err);
-                  showError(`
-                      Error retrieving weather data.<br/>
-                      Is NODE_ENV=production?<br/>
-                      Double check the GPIO pins?
-                  `);
-                })
-            }
-
-            function showError(msg) {
-                elError.classList.add('is-visible');
-                elError.innerHTML = msg;
-            }
-
-            function clearError() {
-                elError.classList.remove('is-visible');
-                elError.innerHTML = '';
+                .then(renderWithWeather)
+                .catch(renderWithWeatherError);
             }
 
             setInterval(fetchData, 10000);
