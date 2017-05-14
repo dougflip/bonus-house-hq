@@ -120,6 +120,7 @@
 
             function toggleLight() {
                 state.floodLight.isOn = !state.floodLight.isOn;
+                sendLightRequest(state.floodLight.isOn);
                 render(state);
             };
 
@@ -139,6 +140,7 @@
             }
 
             function renderWithWeather(weatherData) {
+                state.errorMessage = '';
                 state.weatherData = weatherData;
                 render(state);
             }
@@ -159,6 +161,12 @@
                 .then(parseWeatherResponse)
                 .then(renderWithWeather)
                 .catch(renderWithWeatherError);
+            }
+
+            function sendLightRequest(isOn) {
+                const url = isOn ? '/lights/on' : '/lights/off';
+                return fetch(url)
+                  .then(res => res.json());
             }
 
             setInterval(fetchData, 10000);
